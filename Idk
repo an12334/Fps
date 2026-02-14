@@ -1,0 +1,52 @@
+local Settings = settings()
+local PlayerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+
+local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+local Button = Instance.new("TextButton", ScreenGui)
+Button.Size = UDim2.new(0, 90, 0, 40)
+Button.Position = UDim2.new(0, 50, 0, 150)
+Button.Draggable = true
+Button.TextSize = 15
+Button.Font = Enum.Font.SourceSansBold
+
+local isLimited = true
+
+local function SetFPS(state)
+    if state then
+        isLimited = true
+        Button.Text = "FPS: 10"
+        Button.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        
+        pcall(function()
+            setfpscap(10)
+            Settings.Network.IncomingReplicationLag = 0 -- Giảm tải mạng
+        end)
+    else
+        isLimited = false
+        Button.Text = "FPS: 45"
+        Button.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        
+        pcall(function()
+            setfpscap(45)
+        end)
+    end
+end
+
+SetFPS(true)
+
+
+task.spawn(function()
+    while true do
+        if isLimited then
+            runService = game:GetService("RunService")
+            runService.RenderStepped:Wait()
+            task.wait(0.1) 
+        else
+            task.wait(1)
+        end
+    end
+end)
+
+Button.MouseButton1Click:Connect(function()
+    SetFPS(not isLimited)
+end)
