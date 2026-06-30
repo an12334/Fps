@@ -1,52 +1,183 @@
-local Settings = settings()
-local PlayerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
 
-local ScreenGui = Instance.new("ScreenGui", PlayerGui)
-local Button = Instance.new("TextButton", ScreenGui)
-Button.Size = UDim2.new(0, 90, 0, 40)
-Button.Position = UDim2.new(0, 50, 0, 150)
-Button.Draggable = true
-Button.TextSize = 15
-Button.Font = Enum.Font.SourceSansBold
+if CoreGui:FindFirstChild("ProMenu") then CoreGui.ProMenu:Destroy() end
 
-local isLimited = true
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ProMenu"
+ScreenGui.Parent = CoreGui
 
-local function SetFPS(state)
-    if state then
-        isLimited = true
-        Button.Text = "FPS: 10"
-        Button.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+-- Hàm hiệu ứng cầu vồng
+local function MakeRainbow(obj, prop)
+    spawn(function()
+        while obj and obj.Parent do
+            for i = 0, 1, 0.05 do
+                obj[prop] = Color3.fromHSV(i, 1, 1)
+                task.wait(0.1)
+            end
+        end
+    end)
+end
+
+-- LOGO B (NHỎ, DI CHUYỂN ĐƯỢC)
+local LogoBtn = Instance.new("ImageButton")
+LogoBtn.Size = UDim2.new(0, 45, 0, 45)
+LogoBtn.Position = UDim2.new(0, 20, 0, 80)
+LogoBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+LogoBtn.BorderSizePixel = 2
+LogoBtn.Draggable = true
+LogoBtn.Parent = ScreenGui
+MakeRainbow(LogoBtn, "BorderColor3")
+
+local LogoText = Instance.new("TextLabel", LogoBtn)
+LogoText.Size = UDim2.new(1, 0, 1, 0)
+LogoText.BackgroundTransparency = 1
+LogoText.Text = "B"
+LogoText.TextColor3 = Color3.new(1, 1, 1)
+LogoText.TextSize = 30
+LogoText.Font = Enum.Font.FredokaOne
+MakeRainbow(LogoText, "TextColor3")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 250, 0, 350)
+Frame.Position = UDim2.new(0, 80, 0, 80)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.BorderSizePixel = 2
+Frame.Visible = false
+Frame.Parent = ScreenGui
+
+LogoBtn.MouseButton1Click:Connect(function() Frame.Visible = not Frame.Visible end)
+
+-- SIÊU HÀM TỐI ƯU HÓA HẾT CÔNG SUẤT (POTATO MODE VĨNH VIỄN)
+local function MaxCapacityFix()
+    -- 1. Ép Roblox Engine hạ cấu hình xuống mức thấp nhất hệ thống
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    
+    -- 2. Triệt tiêu hoàn toàn Ánh sáng, Bóng đổ, Mặt trời, Mây mù
+    Lighting.GlobalShadows = false
+    Lighting.Brightness = 0
+    Lighting.ClockTime = 12
+    Lighting.FogEnd = 999999
+    Lighting.FogStart = 999999
+    
+    for _, v in pairs(Lighting:GetChildren()) do
+        if v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("Clouds") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("BloomEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("DepthOfFieldEffect") then
+            v:Destroy()
+        end
+    end
+    
+    -- Tạo bầu trời trống rỗng màu xám (vừa đỡ chói mắt, vừa không tốn GPU render)
+    local GraySky = Instance.new("Sky", Lighting)
+    local grayId = "rbxassetid://924320031"
+    GraySky.SkyboxBk = grayId GraySky.SkyboxDn = grayId GraySky.SkyboxFt = grayId
+    GraySky.SkyboxLf = grayId GraySky.SkyboxRt = grayId GraySky.SkyboxUp = grayId
+
+    -- 3. Đóng băng các chuyển động và chi tiết của Nước (Terrain)
+    local terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        terrain.WaterWaveSize = 0
+        terrain.WaterWaveSpeed = 0
+        terrain.WaterReflectance = 0
+        terrain.WaterTransparency = 1
+        terrain.Decoration = false
+    end
+
+    -- 4. Hàm hủy diệt mọi vật thể gây nặng máy (Quét tận gốc)
+    local function ClearLag(v)
+        if v:IsA("BasePart") or v:IsA("MeshPart") or v:IsA("Part") then
+            v.CastShadow = false
+            v.Reflectance = 0
+            v.Material = Enum.Material.SmoothPlastic -- Biến mọi cấu trúc thành nhựa trơn
+            
+            -- XÓA THÊM: Đá, Cỏ trang trí ngoài map để trống chỗ hoàn toàn
+            local nameLower = v.Name:lower()
+            if nameLower:find("tree") or nameLower:find("leaf") or nameLower:find("bush") or nameLower:find("grass") or nameLower:find("rock") then
+                v:Destroy()
+                return
+            end
+        end
         
-        pcall(function()
-            setfpscap(10)
-            Settings.Network.IncomingReplicationLag = 0 -- Giảm tải mạng
-        end)
-    else
-        isLimited = false
-        Button.Text = "FPS: 45"
-        Button.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        
-        pcall(function()
-            setfpscap(45)
-        end)
+        -- Hủy bỏ hoàn toàn hoa văn bám trên bề mặt (Decals/Textures)
+        if v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") then
+            v:Destroy()
+        -- Hủy diệt hiệu ứng hạt, khói, lửa, tia sáng từ chiêu thức của Boss/Quái/Player
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Beam") then
+            v:Destroy()
+        -- Tắt toàn bộ nguồn phát sáng cục bộ ngoài bản đồ
+        elseif v:IsA("Light") or v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight") then
+            v:Destroy()
+        end
+    end
+
+    -- Thực hiện đợt quét tổng lực đầu tiên
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        ClearLag(obj)
+    end
+    
+    -- KHÓA CỨNG: Đảo mới load ra hoặc chiêu thức vừa tung ra sẽ bị triệt hạ hiệu ứng lập tức
+    Workspace.DescendantAdded:Connect(ClearLag)
+    
+    -- Xóa bớt texture trang phục 3D của người chơi khác để mượt tối đa khi tụ tập đông
+    for _, pl in pairs(Players:GetPlayers()) do
+        if pl ~= Players.LocalPlayer and pl.Character then
+            for _, item in pairs(pl.Character:GetDescendants()) do
+                if item:IsA("Shirt") or item:IsA("Pants") or item:IsA("Graphic") then
+                    item:Destroy()
+                end
+            end
+        end
     end
 end
 
-SetFPS(true)
+-- TẠO CÁC NÚT BẤM
+local function CreateButton(text, pos, callback)
+    local btn = Instance.new("TextButton", Frame)
+    btn.Size = UDim2.new(0.9, 0, 0, 45)
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(120, 0, 0) -- Đỏ sẫm cảnh báo "Hết công suất"
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 16
+    btn.MouseButton1Click:Connect(callback)
+end
 
+-- Nút siêu tối ưu hóa của bạn
+CreateButton("!!! FIX HẾT CÔNG SUẤT !!!", UDim2.new(0.05, 0, 0, 10), function()
+    MaxCapacityFix()
+    Frame.Visible = false -- Tự đóng menu để dễ nhìn sau khi kích hoạt
+end)
 
-task.spawn(function()
-    while true do
-        if isLimited then
-            runService = game:GetService("RunService")
-            runService.RenderStepped:Wait()
-            task.wait(0.1) 
-        else
-            task.wait(1)
+CreateButton("SERVER ÍT NGƯỜI", UDim2.new(0.05, 0, 0, 70), function()
+    local s = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+    for _, v in pairs(s.data) do
+        if v.playing < 10 and v.id ~= game.JobId then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, Players.LocalPlayer)
+            break
         end
     end
 end)
 
-Button.MouseButton1Click:Connect(function()
-    SetFPS(not isLimited)
+CreateButton("VÀO LẠI SERVER CŨ", UDim2.new(0.05, 0, 0, 130), function() 
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Players.LocalPlayer) 
+end)
+
+-- BẢNG FPS SIÊU TO GÓC TRÁI
+local FpsDisplay = Instance.new("TextLabel", ScreenGui)
+FpsDisplay.Size = UDim2.new(0, 200, 0, 60)
+FpsDisplay.Position = UDim2.new(0, 10, 0, 10)
+FpsDisplay.BackgroundTransparency = 1
+FpsDisplay.TextColor3 = Color3.new(1, 1, 1)
+FpsDisplay.TextSize = 45
+FpsDisplay.Font = Enum.Font.FredokaOne
+FpsDisplay.TextXAlignment = Enum.TextXAlignment.Left
+MakeRainbow(FpsDisplay, "TextColor3")
+
+spawn(function()
+    while task.wait(0.5) do
+        FpsDisplay.Text = "FPS: " .. math.floor(workspace:GetRealPhysicsFPS())
+    end
 end)
